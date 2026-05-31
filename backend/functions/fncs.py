@@ -6,7 +6,8 @@ import shutil
 import feedparser
 import requests
 from fastapi import HTTPException
-from backend.logging import logger
+
+from backend.logging.logging import logger
 from backend.rag_pipeline.rag import rag_embed, wipe_vectorstore
 from backend.rag_pipeline.retriver import invalidate_cache, retrieve_docs_for_query
 
@@ -53,6 +54,7 @@ def _get_papers_sync(query: str):
         logger.error(f"arXiv returned an error: {e}")
         raise HTTPException(status_code=502, detail=f"arXiv returned an error: {e}")
 
+
 async def fn_get_papers(query: str):
     try:
         return await asyncio.to_thread(_get_papers_sync, query)
@@ -61,6 +63,7 @@ async def fn_get_papers(query: str):
     except Exception as e:
         logger.error(f"fn_get_papers unexpected error: {e}")
         raise HTTPException(status_code=500, detail=f"Unexpected error: {e}")
+
 
 async def fn_search_and_ingest(query: str, top_k: int, wipe_db: bool):
     try:

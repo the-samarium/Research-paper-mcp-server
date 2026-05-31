@@ -13,3 +13,4 @@ wheels/
 /backend/chromaDB
 /chromaDB
 /*.log
+.python-version

@@ -1,6 +1,13 @@
 from fastapi import APIRouter
+
 # backend/app.py
-from backend.fncs import fn_get_papers, fn_search_and_ingest, fn_wipe_chroma, fn_retrieve, fn_clear_assets
+from backend.functions.fncs import (
+    fn_clear_assets,
+    fn_get_papers,
+    fn_retrieve,
+    fn_search_and_ingest,
+    fn_wipe_chroma,
+)
 
 app = APIRouter()
 

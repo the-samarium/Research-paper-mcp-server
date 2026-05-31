@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 
-from backend.main import app
+from backend.router.main import app
 
 appp = FastAPI()
 
