@@ -6,7 +6,8 @@ from pathlib import Path
 from typing import List
 
 from langchain_chroma import Chroma
-from rag_pipeline.rag import build_embed_model
+
+from backend.rag_pipeline.rag import build_embed_model
 
 # Module-level cache: keyed by (persist_directory, collection_name)
 # so multiple collections are supported without re-opening on every call.
@@ -20,7 +21,7 @@ def get_vectorstore(
     """Return a cached Chroma vectorstore, opening it once per process."""
     key = (persist_directory, collection_name)
     if key not in _vectorstore_cache:
-        # ✅ Guard: don't silently return an empty store if DB doesn't exist
+        #  Guard: don't silently return an empty store if DB doesn't exist
         if not Path(persist_directory).exists():
             raise FileNotFoundError(
                 f"Vectorstore not found at '{persist_directory}'. "
@@ -54,14 +55,7 @@ def retrieve_docs_for_query(
     """Return top-k document texts from the Chroma vectorstore for `query`."""
     vectorstore = get_vectorstore(persist_directory, collection_name)
 
-    # ✅ Direct call — Chroma always supports this, no fallback maze needed
+    #  Direct call — Chroma always supports this, no fallback maze needed
     docs = vectorstore.similarity_search(query, k=top_k)
 
     return [doc.page_content for doc in docs]
-
-
-if __name__ == "__main__":
-    q = "What helped Revathi to claim her plants?"
-    for i, t in enumerate(retrieve_docs_for_query(q, top_k=3), start=1):
-        print(f"--- doc {i} ---")
-        print(t[:1000])

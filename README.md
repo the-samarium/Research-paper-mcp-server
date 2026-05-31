@@ -1,63 +1,142 @@
-# Patent IP Research MCP
+# Research MCP Server
 
-## Overview
+A research paper discovery and ingestion tool built on top of arXiv, ChromaDB, and FastMCP.
+Originally developed as a FastAPI backend with local LLM inference via Ollama, then migrated to an MCP server so that an LLM host (like Claude) handles all reasoning — keeping the server lean and focused on retrieval.
 
-This project provides a FastAPI backend for searching arXiv, downloading PDFs, embedding documents with Ollama, and persisting vector embeddings in Chroma.
+---
+
+## Project Evolution
+
+### Phase 1 — FastAPI + Local LLM
+The project started as a standalone FastAPI backend. It used `langchain-ollama` to run a local LLM, built a RAG pipeline that retrieved relevant chunks from ChromaDB, and returned fully synthesized answers from the server itself.
+
+### Phase 2 — MCP Server (current)
+The LLM layer was removed from the server entirely. The backend now exposes retrieval tools via FastMCP. The connected LLM host (Claude or any MCP-compatible client) receives raw document chunks and does the reasoning. This is a cleaner separation of concerns — the server does search and retrieval, the LLM does thinking.
+
+---
+
+## Project Structure
+
+```
+patent-ip-research-mcp/
+├── server.py                  # FastMCP entry point
+├── pyproject.toml
+├── backend/
+│   ├── __init__.py
+│   ├── app.py                 # FastAPI app with router
+│   ├── main.py                # APIRouter with all route definitions
+│   ├── fncs.py                # All business logic functions
+│   └── rag_pipeline/
+│       ├── __init__.py
+│       ├── rag.py             # Embedding + ChromaDB persistence
+│       └── retriver.py        # Vector store retrieval
+├── assets/                    # Downloaded PDFs (auto-created)
+└── chromaDB/                  # Persisted Chroma vector DB (auto-created)
+```
+
+---
 
 ## Installation
 
-1. Create and activate a virtual environment:
-   - PowerShell:
-     ```powershell
-     python -m venv .venv
-     .\.venv\Scripts\Activate.ps1
-     ```
+### Prerequisites
+- Python >= 3.10
+- [uv](https://github.com/astral-sh/uv) package manager
+- [Ollama](https://ollama.com/) installed and running (required for the embedding model)
 
-2. Install project dependencies:
-   ```powershell
-   pip install .
-   ```
-
-3. Ensure Ollama is installed and running if you plan to use the RAG pipeline with `langchain-ollama`.
-
-## Run the FastAPI backend
-
-From the repository root:
+### Setup
 
 ```powershell
-uvicorn backend.app:app --reload
+# Clone the repo
+git clone https://github.com/your-username/patent-ip-research-mcp.git
+cd patent-ip-research-mcp
+
+# Create and activate virtual environment
+uv venv
+.\.venv\Scripts\Activate.ps1
+
+# Install dependencies
+uv pip install .
 ```
 
-The backend will be available at `http://127.0.0.1:8000` by default.
+---
 
-## API Endpoints
+## Running as an MCP Server
 
-- `GET /search?query=<term>`
-  - Searches arXiv for papers matching `<term>` and returns metadata.
+### Via FastMCP CLI (inspector / dev mode)
+```powershell
+uv run fastmcp dev inspector server.py
+```
 
-- `GET /search/rag?query=<term>&top_k=<n>&wipe_db=<true|false>`
-  - Searches arXiv, downloads matching PDFs into `assets/`, extracts text, splits into chunks, embeds, and persists into `chromaDB/`.
-  - Example:
-    ```powershell
-    curl "http://127.0.0.1:8000/search/rag?query=machine+learning&top_k=5&wipe_db=false"
-    ```
+### Via MCP Inspector UI
+Set the following in the Inspector:
+- **Command:** `uv`
+- **Arguments:** `run fastmcp run server.py`
 
-- `GET /wipe?persist_directory=./chromaDB`
-  - Deletes the persisted Chroma vector database.
+### Registering with Claude Desktop
+Add the following to your `claude_desktop_config.json`:
+```json
+{
+  "mcpServers": {
+    "patent-ip-research": {
+      "command": "uv",
+      "args": ["run", "fastmcp", "run", "server.py"],
+      "cwd": "C:\\path\\to\\patent-ip-research-mcp"
+    }
+  }
+}
+```
 
-## Future query endpoint
+---
 
-A future endpoint can be added to query the persisted vector store and return answers from the indexed document context. This would allow true RAG-style question answering.
+## Running as a FastAPI Server (legacy mode)
 
-## Storage locations
+```powershell
+uvicorn backend.app:appp --reload
+```
 
-- `assets/`
-  - Downloaded PDF files are saved here by the backend.
+API docs available at `http://127.0.0.1:8000/docs`.
 
-- `chromaDB/`
-  - Persisted Chroma vector database files are stored here.
+---
+
+## API / MCP Tools
+
+| Endpoint | Description |
+|---|---|
+| `GET /search?query=<term>` | Fetch up to 20 papers from arXiv matching the query |
+| `GET /search/rag?query=<term>&top_k=<n>&wipe_db=<bool>` | Fetch papers, download PDFs, embed and persist to ChromaDB |
+| `GET /query?query=<term>&top_k=<n>` | Retrieve relevant document chunks from ChromaDB for a query |
+| `GET /wipe` | Wipe the ChromaDB vector database |
+| `GET /clear-assets` | Delete the downloaded PDFs in `assets/` |
+
+---
+
+## Storage
+
+| Path | Contents |
+|---|---|
+| `assets/` | Downloaded PDF files from arXiv, auto-created at project root |
+| `chromaDB/` | Persisted Chroma vector database, auto-created at project root |
+
+Both directories are created automatically at the project root when first used. Paths are resolved from `fncs.py`'s location so they always land in the right place regardless of working directory.
+
+---
+
+## Dependencies
+
+Key packages from `pyproject.toml`:
+
+- `fastmcp` — MCP server framework
+- `fastapi` — underlying HTTP layer
+- `langchain-chroma` — ChromaDB vector store integration
+- `langchain-ollama` — Ollama embeddings (embedding only, LLM inference removed)
+- `langchain-text-splitters` — document chunking
+- `pypdf` — PDF text extraction
+- `feedparser` — arXiv Atom feed parsing
+
+---
 
 ## Notes
 
-- The backend expects to be launched from the repository root so paths like `assets/` and `chromaDB/` resolve correctly.
-- If `wipe_db=true` is passed to `/search/rag`, the existing vector DB is cleared before re-indexing.
+- Ollama is still required for **embeddings** (`nomic-embed-text` or similar). Only the LLM inference step was removed during the MCP migration.
+- If `wipe_db=true` is passed to `/search/rag`, the existing vector DB is released from memory and cleared before re-indexing. This is important on Windows where ChromaDB file locks can prevent deletion.
+- The `assets/` folder must exist and contain PDFs before `/query` will return results. Run `/search/rag` first.
