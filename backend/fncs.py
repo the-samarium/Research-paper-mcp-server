@@ -1,3 +1,4 @@
+import asyncio
 import gc
 import os
 import shutil
@@ -26,6 +27,10 @@ def parse_string(value):
 
 
 async def fn_get_papers(query: str):
+    return await asyncio.to_thread(_get_papers_sync, query)
+
+
+def _get_papers_sync(query: str):
     response = requests.get(
         "http://export.arxiv.org/api/query",
         params={"search_query": f"all:{query}", "start": 0, "max_results": 20},
@@ -48,6 +53,10 @@ async def fn_get_papers(query: str):
 
 
 async def fn_search_and_ingest(query: str, top_k: int, wipe_db: bool):
+    return await asyncio.to_thread(_search_and_ingest_sync, query, top_k, wipe_db)
+
+
+def _search_and_ingest_sync(query: str, top_k: int, wipe_db: bool):
     global _rag_state
 
     response = requests.get(
@@ -123,7 +132,11 @@ async def fn_search_and_ingest(query: str, top_k: int, wipe_db: bool):
     return {"papers": papers, "indexed_chunks": collection.count(), "wipe_db": wipe_db}
 
 
-async def fn_wipe_chroma(persist_directory: str):
+async def fn_wipe_chroma(persist_directory: str = PERSIST_DIR):
+    return await asyncio.to_thread(_wipe_chroma_sync, persist_directory)
+
+
+def _wipe_chroma_sync(persist_directory: str):
     global _rag_state
 
     invalidate_cache(PERSIST_DIR)
@@ -138,7 +151,11 @@ async def fn_wipe_chroma(persist_directory: str):
     return {"wiped": False, "message": f"No vector DB found at {persist_directory}"}
 
 
-def fn_retrieve(query: str, top_k: int):
+async def fn_retrieve(query: str, top_k: int):
+    return await asyncio.to_thread(_retrieve_sync, query, top_k)
+
+
+def _retrieve_sync(query: str, top_k: int):
     docs = retrieve_docs_for_query(
         query=query, top_k=top_k, persist_directory=PERSIST_DIR
     )
@@ -147,7 +164,11 @@ def fn_retrieve(query: str, top_k: int):
     return {"docs": docs, "count": len(docs)}
 
 
-def fn_clear_assets():
+async def fn_clear_assets():
+    return await asyncio.to_thread(_clear_assets_sync)
+
+
+def _clear_assets_sync():
     if not os.path.exists(ASSETS_DIR):
         raise HTTPException(status_code=404, detail="Assets directory not found.")
     shutil.rmtree(ASSETS_DIR)
