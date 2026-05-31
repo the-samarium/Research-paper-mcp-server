@@ -12,3 +12,4 @@ wheels/
 /backend/assets
 /backend/chromaDB
 /chromaDB
+/*.log

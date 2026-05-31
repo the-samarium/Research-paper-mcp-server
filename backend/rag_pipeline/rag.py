@@ -121,7 +121,7 @@ def rag_embed(
     # Handle rebuild
     # Handle rebuild
     if force_rebuild:
-        wipe_vectorstore(persist_directory)  # ✅ uses retry + chmod logic
+        wipe_vectorstore(persist_directory)  #  uses retry + chmod logic
 
     # Create vectorstore and add chunks
     vectorstore = build_vectorstore(
