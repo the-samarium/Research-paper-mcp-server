@@ -1,0 +1,13 @@
+version: "3.8"
+
+services:
+  paper-research:
+    image: paper-mcp
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./chromaDB:/app/chromaDB
+      - ./assets:/app/assets
+    environment:
+      - PYTHONUNBUFFERED=1
+    restart: unless-stopped
